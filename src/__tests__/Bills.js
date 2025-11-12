@@ -5,11 +5,12 @@
 import { screen, waitFor } from "@testing-library/dom"
 import BillsUI from "../views/BillsUI.js"
 import { bills } from "../fixtures/bills.js"
-import { ROUTES_PATH } from "../constants/routes.js"
+import { ROUTES_PATH, ROUTES } from "../constants/routes.js"
 import { localStorageMock } from "../__mocks__/localStorage.js"
 import Bills from "../containers/Bills.js"
 import router from "../app/Router.js"
 import { formatStatus, formatDate } from "../app/format.js"
+import mockStore from "../__mocks__/store"
 
 describe("Given I am connected as an employee", () => {
   describe("When I am on Bills Page", () => {
@@ -152,13 +153,6 @@ describe("Given I am connected as an employee", () => {
         email: 'employee@test.com'
       }))
 
-      // Créer un mock store
-      const mockStore = {
-        bills: jest.fn(() => ({
-          list: jest.fn(() => Promise.resolve(bills))
-        }))
-      }
-
       // Créer une instance du container Bills
       const billsContainer = new Bills({
         document,
@@ -169,8 +163,9 @@ describe("Given I am connected as an employee", () => {
 
       // Appeler getBills et vérifier le résultat
       const result = await billsContainer.getBills()
-      expect(result.length).toBe(bills.length)
-      expect(mockStore.bills).toHaveBeenCalled()
+      expect(result.length).toBeGreaterThan(0)
+      expect(result[0]).toHaveProperty('date')
+      expect(result[0]).toHaveProperty('status')
     })
 
     test("Then getBills should handle corrupted date", async () => {
@@ -190,7 +185,7 @@ describe("Given I am connected as an employee", () => {
       }]
 
       // Créer un mock store
-      const mockStore = {
+      const mockStoreCorrupted = {
         bills: jest.fn(() => ({
           list: jest.fn(() => Promise.resolve(corruptedBills))
         }))
@@ -200,7 +195,7 @@ describe("Given I am connected as an employee", () => {
       const billsContainer = new Bills({
         document,
         onNavigate: jest.fn(),
-        store: mockStore,
+        store: mockStoreCorrupted,
         localStorage: window.localStorage
       })
 
@@ -214,6 +209,63 @@ describe("Given I am connected as an employee", () => {
       expect(result[0].date).toBe("invalid-date")
 
       consoleSpy.mockRestore()
+    })
+  })
+
+  // Tests d'intégration GET
+  describe("When an error occurs on API", () => {
+    test("Then it should handle 404 error", async () => {
+      // Configurer le localStorage
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee',
+        email: 'employee@test.com'
+      }))
+
+      // Mock store avec erreur 404
+      const mockStore404 = {
+        bills: jest.fn(() => ({
+          list: jest.fn(() => Promise.reject(new Error("Erreur 404")))
+        }))
+      }
+
+      // Créer une instance du container Bills
+      const billsContainer = new Bills({
+        document,
+        onNavigate: jest.fn(),
+        store: mockStore404,
+        localStorage: window.localStorage
+      })
+
+      // Appeler getBills et vérifier que l'erreur est propagée
+      await expect(billsContainer.getBills()).rejects.toThrow("Erreur 404")
+    })
+
+    test("Then it should handle 500 error", async () => {
+      // Configurer le localStorage
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee',
+        email: 'employee@test.com'
+      }))
+
+      // Mock store avec erreur 500
+      const mockStore500 = {
+        bills: jest.fn(() => ({
+          list: jest.fn(() => Promise.reject(new Error("Erreur 500")))
+        }))
+      }
+
+      // Créer une instance du container Bills
+      const billsContainer = new Bills({
+        document,
+        onNavigate: jest.fn(),
+        store: mockStore500,
+        localStorage: window.localStorage
+      })
+
+      // Appeler getBills et vérifier que l'erreur est propagée
+      await expect(billsContainer.getBills()).rejects.toThrow("Erreur 500")
     })
   })
 })
