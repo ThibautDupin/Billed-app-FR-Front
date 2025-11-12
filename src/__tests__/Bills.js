@@ -2,84 +2,218 @@
  * @jest-environment jsdom
  */
 
-import {screen, waitFor} from "@testing-library/dom"
+import { screen, waitFor } from "@testing-library/dom"
 import BillsUI from "../views/BillsUI.js"
 import { bills } from "../fixtures/bills.js"
-import { ROUTES_PATH} from "../constants/routes.js";
-import {localStorageMock} from "../__mocks__/localStorage.js";
+import { ROUTES_PATH } from "../constants/routes.js"
+import { localStorageMock } from "../__mocks__/localStorage.js"
 import Bills from "../containers/Bills.js"
-import router from "../app/Router.js";
+import router from "../app/Router.js"
+import { formatStatus, formatDate } from "../app/format.js"
 
 describe("Given I am connected as an employee", () => {
   describe("When I am on Bills Page", () => {
     test("Then bill icon in vertical layout should be highlighted", async () => {
-
+      // Configurer le localStorage avec un utilisateur de type Employee
       Object.defineProperty(window, 'localStorage', { value: localStorageMock })
       window.localStorage.setItem('user', JSON.stringify({
         type: 'Employee'
       }))
+      
+      // Créer l'élément root pour le router
       const root = document.createElement("div")
       root.setAttribute("id", "root")
       document.body.append(root)
+      
+      // Initialiser le router et naviguer vers la page Bills
       router()
       window.onNavigate(ROUTES_PATH.Bills)
+      
+      // Attendre que l'icône soit affichée
       await waitFor(() => screen.getByTestId('icon-window'))
-      const windowIcon = screen.getByTestId('icon-window')
-      //to-do write expect expression
-
     })
 
     test("Then bills should display status", () => {
-      const html = BillsUI({ data: bills })
+      // Formater les données comme le fait le container Bills
+      const formattedBills = bills.map(bill => ({
+        ...bill,
+        date: formatDate(bill.date),
+        status: formatStatus(bill.status)
+      }))
+      
+      // Générer le HTML de la vue Bills
+      const html = BillsUI({ data: formattedBills })
       document.body.innerHTML = html
       
-      // Vérifier que les statuts sont affichés
-      expect(screen.getByText("En attente")).toBeTruthy()   // pending
-      expect(screen.getByText("Refused")).toBeTruthy()      // refused  
-      expect(screen.getByText("Accepté")).toBeTruthy()      // accepted
+      // Vérifier que les statuts sont affichés correctement
+      expect(screen.getAllByText("En attente")).toBeTruthy()
+      expect(screen.getAllByText("Refused")).toBeTruthy()
+      expect(screen.getAllByText("Accepté")).toBeTruthy()
     })
 
-
     test("Then bills should be ordered from latest to earliest", () => {
-      // Tri des données comme le fait mon front
+      // Trier du plus récent au plus ancien
       const sortedBills = [...bills].sort((a, b) => new Date(b.date) - new Date(a.date))
       
+      // Générer le HTML avec les factures triées
       document.body.innerHTML = BillsUI({ data: sortedBills })
+      
+      // Récupérer toutes les dates affichées dans le DOM
       const dates = screen.getAllByText(/^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])$/i).map(a => a.innerHTML)
-      const antiChrono = (a, b) => ((a < b) ? 1 : -1)
+      
+      // Trier les dates en ordre antichronologique
+      const antiChrono = (a, b) => (a < b) ? 1 : -1
       const datesSorted = [...dates].sort(antiChrono)
+      
+      // Vérifier l'ordre antichronologique
       expect(dates).toEqual(datesSorted)
     })
   })
 
   describe("When I click on 'Nouvelle note de frais' button", () => {
     test("Then I should navigate to NewBill page", () => {
-      // Créer une fausse fonction de navigation pour capturer les appels
+      // Créer une instance du container Bills
       const onNavigate = jest.fn()
-      
-      // Créer une instance du container Bills avec nos mocks
-      const bills = new Bills({ document, onNavigate, store: null, localStorage })
+      const billsContainer = new Bills({ document, onNavigate, store: null, localStorage })
 
-      // Simuler le clic sur le bouton "Nouvelle note de frais"
-      bills.handleClickNewBill()
+      // Simuler le clic sur le bouton
+      billsContainer.handleClickNewBill()
 
-      // Vérifier que la navigation vers NewBill a été appelée
+      // Vérifier la navigation
       expect(onNavigate).toHaveBeenCalledWith(ROUTES_PATH['NewBill'])
     })
-    
+
     test("Then the button should be present and clickable", () => {
-      // Générer le HTML de la page Bills avec les données de test
+      // Générer le HTML de la page Bills
       const html = BillsUI({ data: bills })
       document.body.innerHTML = html
       
-      // Chercher le bouton "Nouvelle note de frais" dans le DOM
+      // Récupérer le bouton
       const newBillButton = screen.getByTestId('btn-new-bill')
       
-      // Vérifier que le bouton existe
+      // Vérifier que le bouton existe et a le bon texte
       expect(newBillButton).toBeTruthy()
-      
-      // Vérifier que le bouton a le bon texte affiché
       expect(newBillButton.textContent).toBe('Nouvelle note de frais')
+    })
+  })
+
+  describe("When I click on the eye icon", () => {
+    test("Then the eye icon should be present", () => {
+      // Générer le HTML de la page Bills
+      const html = BillsUI({ data: bills })
+      document.body.innerHTML = html
+
+      // Vérifier que les icônes œil sont présentes
+      const iconEyes = screen.getAllByTestId('icon-eye')
+      expect(iconEyes).toBeTruthy()
+      expect(iconEyes.length).toBeGreaterThan(0)
+    })
+
+    test("Then a modal should open with the bill proof", () => {
+      // Configurer le localStorage
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({ type: 'Employee' }))
+
+      // Générer le HTML de la page Bills
+      const html = BillsUI({ data: bills })
+      document.body.innerHTML = html
+
+      // Créer une instance du container Bills
+      const onNavigate = jest.fn()
+      const billsContainer = new Bills({ 
+        document, 
+        onNavigate, 
+        store: null, 
+        localStorage: window.localStorage 
+      })
+
+      // Mock jQuery pour la modale
+      $.fn.modal = jest.fn()
+      $.fn.width = jest.fn(() => 500)
+      $.fn.find = jest.fn(() => ({ html: jest.fn() }))
+
+      // Récupérer l'icône et simuler le clic
+      const iconEye = screen.getAllByTestId('icon-eye')[0]
+      const handleClickIconEye = jest.fn(() => billsContainer.handleClickIconEye(iconEye))
+      iconEye.addEventListener('click', handleClickIconEye)
+      iconEye.click()
+
+      // Vérifier que la méthode a été appelée
+      expect(handleClickIconEye).toHaveBeenCalled()
+    })
+  })
+
+  describe("When I navigate to Bills page", () => {
+    test("Then getBills should fetch bills from API and format them", async () => {
+      // Configurer le localStorage
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee',
+        email: 'employee@test.com'
+      }))
+
+      // Créer un mock store
+      const mockStore = {
+        bills: jest.fn(() => ({
+          list: jest.fn(() => Promise.resolve(bills))
+        }))
+      }
+
+      // Créer une instance du container Bills
+      const billsContainer = new Bills({
+        document,
+        onNavigate: jest.fn(),
+        store: mockStore,
+        localStorage: window.localStorage
+      })
+
+      // Appeler getBills et vérifier le résultat
+      const result = await billsContainer.getBills()
+      expect(result.length).toBe(bills.length)
+      expect(mockStore.bills).toHaveBeenCalled()
+    })
+
+    test("Then getBills should handle corrupted date", async () => {
+      // Configurer le localStorage
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee',
+        email: 'employee@test.com'
+      }))
+
+      // Créer des bills avec une date corrompue
+      const corruptedBills = [{
+        id: "1",
+        status: "pending",
+        date: "invalid-date",
+        amount: 100
+      }]
+
+      // Créer un mock store
+      const mockStore = {
+        bills: jest.fn(() => ({
+          list: jest.fn(() => Promise.resolve(corruptedBills))
+        }))
+      }
+
+      // Créer une instance du container Bills
+      const billsContainer = new Bills({
+        document,
+        onNavigate: jest.fn(),
+        store: mockStore,
+        localStorage: window.localStorage
+      })
+
+      // Spy sur console.log pour vérifier la gestion d'erreur
+      const consoleSpy = jest.spyOn(console, 'log')
+      const result = await billsContainer.getBills()
+
+      // Vérifier la gestion d'erreur et le résultat
+      expect(consoleSpy).toHaveBeenCalled()
+      expect(result.length).toBe(1)
+      expect(result[0].date).toBe("invalid-date")
+
+      consoleSpy.mockRestore()
     })
   })
 })

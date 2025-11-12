@@ -114,6 +114,40 @@ describe("Given that I am a user on login page", () => {
     test("It should renders Bills page", () => {
       expect(screen.getAllByText("Mes notes de frais")).toBeTruthy();
     });
+
+    // Test la gestion d'erreur lors de la connexion Employee
+    test("Then createUser should be called when login fails", () => {
+      document.body.innerHTML = LoginUI();
+      const inputData = {
+        email: "johndoe@email.com",
+        password: "azerty",
+      };
+
+      const store = jest.fn();
+      const login = new Login({
+        document,
+        localStorage: window.localStorage,
+        onNavigate: jest.fn(),
+        PREVIOUS_LOCATION: "",
+        store,
+      });
+
+      login.login = jest.fn().mockRejectedValue(new Error("Erreur de connexion"));
+      login.createUser = jest.fn().mockResolvedValue({});
+
+      const inputEmailUser = screen.getByTestId("employee-email-input");
+      fireEvent.change(inputEmailUser, { target: { value: inputData.email } });
+
+      const inputPasswordUser = screen.getByTestId("employee-password-input");
+      fireEvent.change(inputPasswordUser, { target: { value: inputData.password } });
+
+      const form = screen.getByTestId("form-employee");
+      fireEvent.submit(form);
+
+      return Promise.resolve().then(() => {
+        expect(login.createUser).toHaveBeenCalled();
+      });
+    });
   });
 });
 
