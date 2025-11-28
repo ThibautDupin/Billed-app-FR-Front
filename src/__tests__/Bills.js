@@ -205,10 +205,9 @@ describe("Given I am connected as an employee", () => {
 
       consoleSpy.mockRestore()
     })
-  })
 
-  // Tests d'intégration GET
-  describe("When an error occurs on API", () => {
+    // Gestion des erreurs 404 et 500
+
     test("Then it should handle 404 error", async () => {
       // Configurer le localStorage
       Object.defineProperty(window, 'localStorage', { value: localStorageMock })
@@ -261,6 +260,23 @@ describe("Given I am connected as an employee", () => {
 
       // Appeler getBills et vérifier que l'erreur est propagée
       await expect(billsContainer.getBills()).rejects.toThrow("Erreur 500")
+    })
+  })
+})
+
+// test d'intégration GET Bills inspiré de Dashboard.js
+describe("Given I am a user connected as Employee", () => {
+  describe("When I navigate to Bills", () => {
+    test("fetches bills from mock API GET", async () => {
+      localStorage.setItem("user", JSON.stringify({ type: "Employee", email: "e@e" }));
+      const root = document.createElement("div")
+      root.setAttribute("id", "root")
+      document.body.append(root)
+      router()
+      window.onNavigate(ROUTES_PATH.Bills)
+      await waitFor(() => screen.getByText("Mes notes de frais"))
+      expect(screen.getByText("Mes notes de frais")).toBeTruthy()
+      expect(screen.getAllByTestId("icon-eye").length).toBeGreaterThan(0)
     })
   })
 })
