@@ -30,8 +30,10 @@ describe("Given I am connected as an employee", () => {
       router()
       window.onNavigate(ROUTES_PATH.Bills)
       
-      // Attendre que l'icône soit affichée
+      // Attendre que l'icône soit affichée et vérifier qu'elle est mise en surbrillance
       await waitFor(() => screen.getByTestId('icon-window'))
+      const windowIcon = screen.getByTestId('icon-window')
+      expect(windowIcon.classList.contains('active-icon')).toBe(true)
     })
 
     test("Then bills should display status", () => {
@@ -55,18 +57,11 @@ describe("Given I am connected as an employee", () => {
     test("Then bills should be ordered from latest to earliest", () => {
       // Trier du plus récent au plus ancien
       const sortedBills = [...bills].sort((a, b) => new Date(b.date) - new Date(a.date))
-      
-      // Générer le HTML avec les factures triées
+
       document.body.innerHTML = BillsUI({ data: sortedBills })
-      
-      // Récupérer toutes les dates affichées dans le DOM
       const dates = screen.getAllByText(/^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])$/i).map(a => a.innerHTML)
-      
-      // Trier les dates en ordre antichronologique
       const antiChrono = (a, b) => (a < b) ? 1 : -1
       const datesSorted = [...dates].sort(antiChrono)
-      
-      // Vérifier l'ordre antichronologique
       expect(dates).toEqual(datesSorted)
     })
   })
