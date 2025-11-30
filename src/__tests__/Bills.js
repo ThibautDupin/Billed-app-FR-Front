@@ -262,12 +262,10 @@ describe("Given I am connected as an employee", () => {
       await expect(billsContainer.getBills()).rejects.toThrow("Erreur 500")
     })
   })
-})
 
-// test d'intégration GET Bills inspiré de Dashboard.js
-describe("Given I am a user connected as Employee", () => {
-  describe("When I navigate to Bills", () => {
-    test("fetches bills from mock API GET", async () => {
+  // Test d'intégration GET - inspiré de Dashboard.js
+  describe("When I navigate to Bills with router", () => {
+    test("Then it should fetch bills from mock API and display them", async () => {
       localStorage.setItem("user", JSON.stringify({ type: "Employee", email: "e@e" }));
       const root = document.createElement("div")
       root.setAttribute("id", "root")
