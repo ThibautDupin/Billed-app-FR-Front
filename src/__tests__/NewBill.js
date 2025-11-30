@@ -146,6 +146,44 @@ describe("Given I am connected as an employee", () => {
       // Vérifier que la navigation vers Bills a été appelée
       expect(onNavigate).toHaveBeenCalledWith(ROUTES_PATH['Bills'])
     })
+
+    // Test d'intégration POST
+    test("Then it should create a new bill via POST to the API", async () => {
+      const updateMock = jest.fn(() => Promise.resolve({ id: "1234", status: "pending" }))
+      const mockStore = {
+        bills: jest.fn(() => ({
+          update: updateMock
+        }))
+      }
+
+      const newBill = new NewBill({
+        document,
+        onNavigate: jest.fn(),
+        store: mockStore,
+        localStorage: window.localStorage
+      })
+
+      // Simuler les données d'une nouvelle note de frais
+      const bill = {
+        email: "employee@test.com",
+        type: "Transports",
+        name: "Vol Paris Londres",
+        amount: 348,
+        date: "2023-04-15",
+        vat: "70",
+        pct: 20,
+        commentary: "Voyage d'affaires",
+        fileUrl: "https://test.com/file.jpg",
+        fileName: "test.jpg",
+        status: "pending"
+      }
+
+      // Appeler updateBill pour créer la nouvelle note
+      await newBill.updateBill(bill)
+
+      // Vérifier que la méthode update du store a été appelée
+      expect(updateMock).toHaveBeenCalled()
+    })
   })
 // AJOUT
   describe("When I upload a file", () => {
