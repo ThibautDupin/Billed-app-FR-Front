@@ -285,12 +285,133 @@ describe("Given I am connected as an employee", () => {
       // Appeler directement handleChangeFile
       newBill.handleChangeFile(event)
       
-      // Attendre que la promesse soit rejetée
-      await new Promise(process.nextTick)
+      // Attendre que l'erreur soit traitée
+      await new Promise(resolve => setTimeout(resolve, 0))
       
       // Vérifier que console.error a été appelé
       expect(consoleErrorSpy).toHaveBeenCalled()
       
+      consoleErrorSpy.mockRestore()
+    })
+  })
+
+  // Tests d'intégration - Erreurs API
+  describe("When I upload a file and API fails", () => {
+    test("Then it should handle 404 error", async () => {
+      // Configurer le localStorage
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee',
+        email: 'employee@test.com'
+      }))
+
+      // Mock store avec erreur 404
+      const mockStore404 = {
+        bills: jest.fn(() => ({
+          create: jest.fn(() => Promise.reject(new Error("Erreur 404")))
+        }))
+      }
+
+      // Générer le HTML
+      const html = NewBillUI()
+      document.body.innerHTML = html
+
+      // Créer une instance de NewBill
+      const newBill = new NewBill({
+        document,
+        onNavigate: jest.fn(),
+        store: mockStore404,
+        localStorage: window.localStorage
+      })
+
+      // Récupérer l'input file et créer un fichier
+      const fileInput = screen.getByTestId("file")
+      const file = new File(['test'], 'test.jpg', { type: 'image/jpg' })
+      
+      // Définir les propriétés pour simuler le fichier
+      Object.defineProperty(fileInput, 'files', {
+        value: [file],
+        writable: false
+      })
+
+      // Spy sur console.error pour vérifier la gestion d'erreur
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      // Simuler l'événement change
+      const event = new Event('change', { bubbles: true })
+      Object.defineProperty(event, 'target', {
+        value: { value: 'C:\\fakepath\\test.jpg', files: [file] },
+        writable: false
+      })
+
+      // Appeler handleChangeFile
+      newBill.handleChangeFile(event)
+
+      // Attendre que l'erreur soit traitée
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      // Vérifier que l'erreur a été loggée
+      expect(consoleErrorSpy).toHaveBeenCalled()
+
+      consoleErrorSpy.mockRestore()
+    })
+
+    test("Then it should handle 500 error", async () => {
+      // Configurer le localStorage
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee',
+        email: 'employee@test.com'
+      }))
+
+      // Mock store avec erreur 500
+      const mockStore500 = {
+        bills: jest.fn(() => ({
+          create: jest.fn(() => Promise.reject(new Error("Erreur 500")))
+        }))
+      }
+
+      // Générer le HTML
+      const html = NewBillUI()
+      document.body.innerHTML = html
+
+      // Créer une instance de NewBill
+      const newBill = new NewBill({
+        document,
+        onNavigate: jest.fn(),
+        store: mockStore500,
+        localStorage: window.localStorage
+      })
+
+      // Récupérer l'input file et créer un fichier
+      const fileInput = screen.getByTestId("file")
+      const file = new File(['test'], 'test.jpg', { type: 'image/jpg' })
+      
+      // Définir les propriétés pour simuler le fichier
+      Object.defineProperty(fileInput, 'files', {
+        value: [file],
+        writable: false
+      })
+
+      // Spy sur console.error pour vérifier la gestion d'erreur
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
+
+      // Simuler l'événement change
+      const event = new Event('change', { bubbles: true })
+      Object.defineProperty(event, 'target', {
+        value: { value: 'C:\\fakepath\\test.jpg', files: [file] },
+        writable: false
+      })
+
+      // Appeler handleChangeFile
+      newBill.handleChangeFile(event)
+
+      // Attendre que l'erreur soit traitée
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      // Vérifier que l'erreur a été loggée
+      expect(consoleErrorSpy).toHaveBeenCalled()
+
       consoleErrorSpy.mockRestore()
     })
   })
