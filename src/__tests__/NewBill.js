@@ -234,6 +234,75 @@ describe("Given I am connected as an employee", () => {
       // Vérifier que handleChangeFile a été appelé
       expect(handleChangeFile).toHaveBeenCalled()
     })
+
+    test("Then it should reject file with invalid extension", () => {
+      // Configurer le localStorage
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee',
+        email: 'employee@test.com'
+      }))
+      
+      // Générer le HTML
+      const html = NewBillUI()
+      document.body.innerHTML = html
+      
+      // Créer un mock store
+      const mockStore = {
+        bills: jest.fn(() => ({
+          create: jest.fn(() => Promise.resolve({
+            fileUrl: 'https://test.com/file.jpg',
+            key: '1234'
+          }))
+        }))
+      }
+      
+      // Créer une instance de NewBill
+      const newBill = new NewBill({
+        document,
+        onNavigate: jest.fn(),
+        store: mockStore,
+        localStorage: window.localStorage
+      })
+      
+      // Mock de window.alert
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation()
+      
+      // Récupérer l'input file et créer un fichier avec extension invalide (.pdf)
+      const fileInput = screen.getByTestId("file")
+      const file = new File(['document'], 'document.pdf', { type: 'application/pdf' })
+      
+      // Simuler l'ajout du fichier dans l'input
+      Object.defineProperty(fileInput, 'files', {
+        value: [file],
+        writable: false,
+        configurable: true
+      })
+      
+      // Créer l'événement change
+      const changeEvent = {
+        preventDefault: jest.fn(),
+        target: {
+          value: 'C:\\fakepath\\document.pdf',
+          files: [file]
+        }
+      }
+      
+      // Appeler handleChangeFile
+      newBill.handleChangeFile(changeEvent)
+      
+      // Vérifier que l'alert a été appelée
+      expect(alertSpy).toHaveBeenCalledWith('Veuillez sélectionner un fichier au format JPG, JPEG ou PNG uniquement.')
+      
+      // Vérifier que le champ a été vidé
+      expect(changeEvent.target.value).toBe('')
+      
+      // Vérifier que le store.bills().create() n'a PAS été appelé
+      expect(mockStore.bills).not.toHaveBeenCalled()
+      
+      // Nettoyer
+      alertSpy.mockRestore()
+    })
 // AJOUT
     test("Then it should handle file upload error", async () => {
       // Configurer le localStorage
